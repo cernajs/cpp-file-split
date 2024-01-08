@@ -26,6 +26,9 @@ class Organizer:
         header_file = open(f"{class_name}.hpp", "w")
         cpp_file = open(f"{class_name}.cpp", "w")
 
+        cpp_file.write(f"#include \"{class_name}.hpp\"\n")
+        self.main_file.write(f"#include \"{class_name}.hpp\"\n")
+
         for include in self.includes:
             header_file.write(f"#include {include}\n")
             cpp_file.write(f"#include {include}\n")
@@ -42,14 +45,25 @@ class Organizer:
 
         header_file.write("public:\n")
         for method in methods:
-            header_file.write(f"\t{method};\n")
+            if method.endswith("{}"):
+                method_definition = method
+            else:
+                method_definition = method.split("{")[0] + ";"
+            header_file.write(f"\t{method_definition};\n")
 
         for method in method_implementation:
-            
-            cpp_file.write(f"{method} {{\n")
+            method_name = method.split("(")[0]
+            method_parameters = method.split("(")[1].split(")")[0]
+            isConstructor = class_name in method_name
+            if isConstructor:
+                cpp_file.write(f"{class_name}::{method} \n")
+            else:
+                split_definition = method_name.split()
+                split_definition[1] = f"{class_name}::{split_definition[1]}"
+                cpp_file.write(" ".join(split_definition) + "(" + "".join(method_parameters) + ") {" + "\n")
+
             for line in method_implementation[method]:
                 cpp_file.write(line)
-            #cpp_file.write("}\n")
 
         header_file.write("};\n")
         header_file.write(f"#endif {class_name.upper()}_HPP\n")
@@ -83,8 +97,8 @@ class Organizer:
                 variables.append(stripped_line)
 
             elif any(x in stripped_line for x in self.types) and '(' in stripped_line and ')' in stripped_line:
-                if stripped_line.endswith('{'):
-                    stripped_line = stripped_line[:-1]
+                # if stripped_line.endswith('{'):
+                #     stripped_line = stripped_line[:-1]
                 methods.append(stripped_line)
 
                 #constructor
@@ -143,7 +157,6 @@ class Organizer:
 
         else:
             self.main_file.write(line)
-            #raise Exception(f"Unknown line type {line}")
 
     def process_file(self):
         while True:
